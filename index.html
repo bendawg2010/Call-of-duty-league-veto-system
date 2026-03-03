@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDL Veto System — BO7</title>
+<style>
+/* ═══════════════════════════════ BASE ═══════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg0:     #07070d;
+  --bg1:     #0e0e18;
+  --bg2:     #14141f;
+  --bg3:     #1c1c2a;
+  --border:  #252535;
+  --border2: #32324a;
+  --accent:  #00c8ff;
+  --red:     #e8003d;
+  --green:   #00e676;
+  --yellow:  #ffd600;
+  --orange:  #ff6b35;
+  --text:    #e8e8f0;
+  --muted:   #5a5a78;
+  --muted2:  #3a3a55;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg0);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════ SCROLLBAR ═══════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg1); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ═══════════════════════════════ HEADER ══════════════════════════════ */
+header {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 52px;
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-right: 24px;
+  white-space: nowrap;
+}
+.logo span { color: var(--muted); font-weight: 400; }
+
+/* Scoreboard inside header */
+.header-score {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  justify-content: center;
+}
+.hs-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+.hs-name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hs-score {
+  font-size: 28px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: center;
+  line-height: 1;
+}
+.hs-divider {
+  font-size: 20px;
+  color: var(--muted2);
+  padding: 0 10px;
+  font-weight: 300;
+}
+.hs-colorbar {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 24px;
+}
+.phase-chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+.phase-chip.veto   { border-color: var(--accent); color: var(--accent); }
+.phase-chip.series { border-color: var(--green);  color: var(--green);  }
+.phase-chip.done   { border-color: var(--yellow); color: var(--yellow); }
+
+/* ═══════════════════════════════ NAV TABS ════════════════════════════ */
+.nav {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+.nav-tab {
+  padding: 10px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+  user-select: none;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-tab.disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+/* ═══════════════════════════════ LAYOUT ══════════════════════════════ */
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.panel {
+  overflow-y: auto;
+  padding: 20px;
+}
+.panel-left  { flex: 1 1 0; border-right: 1px solid var(--border); }
+.panel-right { width: 380px; flex-shrink: 0; }
+
+/* ═══════════════════════════════ CARDS ═══════════════════════════════ */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.card:last-child { margin-bottom: 0; }
+.card-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.card-subtitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════ BUTTONS ═════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .3; cursor: not-allowed; }
+.btn-accent  { background: var(--accent); color: #000; }
+.btn-accent:not(:disabled):hover { filter: brightness(1.15); }
+.btn-red     { background: var(--red); color: #fff; }
+.btn-red:not(:disabled):hover { filter: brightness(1.2); }
+.btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border2); }
+.btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-lg { padding: 12px 28px; font-size: 13px; }
+.btn-block { width: 100%; }
+
+/* ═══════════════════════════════ FORM ════════════════════════════════ */
+.form-group { margin-bottom: 12px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.form-input {
+  width: 100%;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--accent); }
+textarea.form-input { resize: vertical; font-family: inherit; line-height: 1.6; }
+input[type="color"].form-input { height: 36px; padding: 3px; cursor: pointer; }
+
+/* ═══════════════════════════════ SETUP SCREEN ════════════════════════ */
+#screen-setup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+.setup-box { width: 100%; max-width: 720px; }
+.setup-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.setup-sub {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 32px;
+  letter-spacing: 1px;
+}
+.setup-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.team-form-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.team-form-card.t1 { border-top: 3px solid var(--accent); }
+.team-form-card.t2 { border-top: 3px solid var(--red); }
+.map-pool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* ═══════════════════════════════ VETO SCREEN ═════════════════════════ */
+.action-prompt {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.action-prompt.action-ban  { border-left-color: var(--red); }
+.action-prompt.action-pick { border-left-color: var(--green); }
+.ap-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.ap-team {
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.ap-desc { font-size: 12px; color: var(--muted); }
+.ap-action-word { font-weight: 700; }
+.ap-action-word.ban  { color: var(--red); }
+.ap-action-word.pick { color: var(--green); }
+
+.veto-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.vp-bar { flex: 1; display: flex; gap: 3px; }
+.vp-seg {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg3);
+  transition: background .3s;
+}
+.vp-seg.done    { background: var(--accent); }
+.vp-seg.current { background: var(--yellow); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.vp-label { font-size: 10px; color: var(--muted); white-space: nowrap; margin-left: 8px; }
+
+.mode-section { margin-bottom: 20px; }
+.mode-section:last-child { margin-bottom: 0; }
+.mode-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.mode-name {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+.mode-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mode-dot.hp      { background: var(--accent); }
+.mode-dot.snd     { background: var(--yellow); }
+.mode-dot.control { background: var(--orange); }
+.mode-line { flex: 1; height: 1px; background: var(--border); }
+.mode-active-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0,200,255,0.15);
+  color: var(--accent);
+  border: 1px solid rgba(0,200,255,0.3);
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+.map-tile {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 8px 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  transition: all .15s;
+}
+.map-tile.clickable { cursor: pointer; }
+.map-tile.clickable:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.map-tile.clickable.is-ban:hover  { border-color: var(--red);   color: var(--red); }
+.map-tile.clickable.is-pick:hover { border-color: var(--green); color: var(--green); }
+.map-tile.state-banned {
+  opacity: .4;
+  text-decoration: line-through;
+  text-decoration-color: var(--red);
+  border-style: dashed;
+}
+.map-tile.state-picked { border-color: var(--green); }
+.map-tile.state-auto   { border-color: var(--yellow); }
+.tile-tag {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+.tile-tag.ban  { color: var(--red); }
+.tile-tag.pick { color: var(--green); }
+.tile-tag.auto { color: var(--yellow); }
+
+.veto-done-card {
+  background: var(--bg2);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.veto-done-icon  { font-size: 28px; margin-bottom: 8px; }
+.veto-done-title { font-size: 16px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+.veto-done-sub   { font-size: 12px; color: var(--muted); }
+
+/* ═══════════════════════════════ SERIES PANEL ════════════════════════ */
+.game-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.game-card:last-child { margin-bottom: 0; }
+.game-card.won-1 { border-color: var(--t1-color, #0057B8); }
+.game-card.won-2 { border-color: var(--t2-color, #E8003D); }
+
+.game-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.game-num { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; min-width: 40px; }
+.game-map-name { font-size: 15px; font-weight: 700; flex: 1; }
+.game-map-name.tbd { color: var(--muted); font-style: italic; font-size: 13px; font-weight: 400; }
+.game-mode-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.game-mode-badge.hp      { background: rgba(0,200,255,.15);  color: var(--accent); }
+.game-mode-badge.snd     { background: rgba(255,214,0,.15);  color: var(--yellow); }
+.game-mode-badge.control { background: rgba(255,107,53,.15); color: var(--orange); }
+
+.game-score-row { display: flex; align-items: center; gap: 8px; }
+.score-team-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.score-field {
+  width: 60px;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: border-color .2s;
+}
+.score-field:focus    { border-color: var(--accent); }
+.score-field:disabled { opacity: .35; }
+.score-sep { font-size: 13px; color: var(--muted); }
+.win-btn {
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.win-btn:hover          { border-color: var(--green); color: var(--green); }
+.win-btn.active         { color: #000; font-weight: 800; }
+.win-btn:disabled       { opacity: .25; cursor: not-allowed; }
+
+/* ═══════════════════════════════ LOG ════════════════════════════════ */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--bg3);
+  border-radius: 4px;
+}
+.log-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 32px;
+  text-align: center;
+}
+.log-badge.ban  { background: rgba(232,0,61,.25);  color: var(--red); }
+.log-badge.pick { background: rgba(0,230,118,.2);  color: var(--green); }
+.log-badge.auto { background: rgba(255,214,0,.2);  color: var(--yellow); }
+.log-mode { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+.log-map  { font-weight: 600; flex: 1; }
+.log-team { font-size: 11px; color: var(--muted); }
+
+/* ═══════════════════════════════ WINNER ══════════════════════════════ */
+.winner-banner {
+  display: none;
+  background: linear-gradient(135deg, var(--bg2), var(--bg3));
+  border: 1px solid var(--yellow);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.winner-banner.show { display: block; animation: fadeUp .5s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.wb-label { font-size: 10px; color: var(--yellow); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; }
+.wb-name  { font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 3px; }
+.wb-score { font-size: 14px; color: var(--muted); margin-top: 6px; }
+
+/* ═══════════════════════════════ MODAL ═══════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  align-items: center; justify-content: center;
+  z-index: 100;
+  display: none;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  width: 460px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  animation: fadeUp .25s ease;
+}
+.modal-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 20px; }
+.modal-footer { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+
+/* ═══════════════════════════════ TOAST ═══════════════════════════════ */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 12px;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.ok  { border-color: var(--green); color: var(--green); }
+.toast.err { border-color: var(--red);   color: var(--red);   }
+
+/* ═══════════════════════════════ UTILS ═══════════════════════════════ */
+.flex { display: flex; }
+.gap-8 { gap: 8px; }
+.mt-8  { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ HEADER ════════════ -->
+<header>
+  <div class="logo">CDL <span>Veto</span></div>
+
+  <div class="header-score">
+    <div class="hs-team">
+      <div class="hs-colorbar" id="hdr-bar1" style="background:#0057B8;"></div>
+      <div class="hs-name"  id="hdr-t1-name">TEAM 1</div>
+      <div class="hs-score" id="hdr-t1-score" style="color:#0057B8;">0</div>
+    </div>
+    <div class="hs-divider">—</div>
+    <div class="hs-team">
+      <div class="hs-score" id="hdr-t2-score" style="color:#E8003D;">0</div>
+      <div class="hs-name"  id="hdr-t2-name">TEAM 2</div>
+      <div class="hs-colorbar" id="hdr-bar2" style="background:#E8003D;"></div>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="phase-chip" id="phase-chip">Setup</div>
+    <button class="btn btn-ghost btn-sm" onclick="openSettings()">&#9881; Settings</button>
+    <button class="btn btn-red btn-sm"   onclick="confirmReset()">&#8635; Reset</button>
+  </div>
+</header>
+
+<!-- ════════════ NAV ════════════ -->
+<nav class="nav">
+  <div class="nav-tab active"  id="nav-setup"   onclick="switchTab('setup')">Setup</div>
+  <div class="nav-tab disabled" id="nav-veto"   onclick="switchTab('veto')">Veto</div>
+  <div class="nav-tab disabled" id="nav-series" onclick="switchTab('series')">Series Scores</div>
+</nav>
+
+<!-- ════════════ SETUP SCREEN ════════════ -->
+<div id="screen-setup">
+  <div class="setup-box">
+    <div class="setup-title">Map Veto System</div>
+    <div class="setup-sub">BO7 Season &nbsp;·&nbsp; Best of 5 &nbsp;·&nbsp; CDL Format</div>
+
+    <div class="setup-teams">
+      <div class="team-form-card t1">
+        <div class="card-subtitle">Team 1 &nbsp;(Veto Advantage)</div>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="setup-t1-name" type="text" placeholder="Team 1" maxlength="24">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <input class="form-input" id="setup-t1-color" type="color" value="#0057B8">
+        </div>
+      </div>
+      <div class="team-form-card t2">
+        <div class="card-subtitle">Team 2</div>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="setup-t2-name" type="text" placeholder="Team 2" maxlength="24">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <input class="form-input" id="setup-t2-color" type="color" value="#E8003D">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Map Pool &mdash; Update to match the current BO7 season</div>
+      <div class="map-pool-grid">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">&#9679; Hardpoint (6 maps)</label>
+          <textarea class="form-input" id="setup-hp" rows="7" placeholder="One map per line"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">&#9679; Search &amp; Destroy (6 maps)</label>
+          <textarea class="form-input" id="setup-snd" rows="7" placeholder="One map per line"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">&#9679; Control (3 maps)</label>
+          <textarea class="form-input" id="setup-control" rows="7" placeholder="One map per line"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-accent btn-block btn-lg" onclick="startVeto()" style="margin-top:16px;">
+      Start Veto Process &#8594;
+    </button>
+  </div>
+</div>
+
+<!-- ════════════ MAIN SCREEN (Veto + Series) ════════════ -->
+<div id="screen-main" style="display:none; flex:1; overflow:hidden; flex-direction:column;">
+  <div class="workspace">
+
+    <!-- LEFT: Veto Panel -->
+    <div class="panel panel-left" id="panel-veto">
+
+      <div class="winner-banner" id="winner-banner">
+        <div class="wb-label">&#127942; Series Winner</div>
+        <div class="wb-name"  id="winner-name">—</div>
+        <div class="wb-score" id="winner-score"></div>
+      </div>
+
+      <div class="veto-done-card" id="veto-done-card" style="display:none;">
+        <div class="veto-done-icon">&#10003;</div>
+        <div class="veto-done-title">Veto Complete</div>
+        <div class="veto-done-sub">All maps determined — head to Series Scores to track results.</div>
+      </div>
+
+      <div class="action-prompt action-ban" id="action-prompt">
+        <div class="ap-label">Current Action</div>
+        <div class="ap-team" id="ap-team">TEAM 1</div>
+        <div class="ap-desc">
+          <span class="ap-action-word ban" id="ap-word">BAN</span>
+          <span id="ap-rest"> a Hardpoint map</span>
+        </div>
+      </div>
+
+      <div class="veto-progress">
+        <div class="vp-bar"   id="vp-bar"></div>
+        <div class="vp-label" id="vp-label">0 / 12</div>
+      </div>
+
+      <div class="mode-section">
+        <div class="mode-header">
+          <div class="mode-dot hp"></div>
+          <div class="mode-name">Hardpoint</div>
+          <div class="mode-active-badge" id="badge-hp" style="display:none;">Active</div>
+          <div class="mode-line"></div>
+        </div>
+        <div class="map-grid" id="grid-hp"></div>
+      </div>
+
+      <div class="mode-section">
+        <div class="mode-header">
+          <div class="mode-dot snd"></div>
+          <div class="mode-name">Search &amp; Destroy</div>
+          <div class="mode-active-badge" id="badge-snd" style="display:none;">Active</div>
+          <div class="mode-line"></div>
+        </div>
+        <div class="map-grid" id="grid-snd"></div>
+      </div>
+
+      <div class="mode-section">
+        <div class="mode-header">
+          <div class="mode-dot control"></div>
+          <div class="mode-name">Control</div>
+          <div class="mode-active-badge" id="badge-control" style="display:none;">Active</div>
+          <div class="mode-line"></div>
+        </div>
+        <div class="map-grid" id="grid-control"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Veto Log</div>
+        <div class="log-list" id="veto-log"></div>
+        <div id="log-empty" style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0;">No actions yet</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Series Scores -->
+    <div class="panel panel-right" id="panel-series">
+      <div class="card-title" style="margin-bottom:16px;">Series Schedule</div>
+      <div id="series-cards"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ SETTINGS MODAL ════════════ -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal">
+    <div class="modal-title">&#9881; Settings</div>
+    <div class="form-group">
+      <label class="form-label">Team 1 Name</label>
+      <input class="form-input" id="set-t1-name" type="text" maxlength="24">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Team 1 Color</label>
+      <input class="form-input" id="set-t1-color" type="color">
+    </div>
+    <div class="form-group" style="margin-top:14px;">
+      <label class="form-label">Team 2 Name</label>
+      <input class="form-input" id="set-t2-name" type="text" maxlength="24">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Team 2 Color</label>
+      <input class="form-input" id="set-t2-color" type="color">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────── CDL BO7 DEFAULT MAP POOL ────────────────────────
+// Update these maps to match the current BO7 CDL season
+const DEFAULT_POOL = {
+  hp:      ['Hacienda', 'Highrise', 'Lowlands', 'Nuketown', 'Rewind', 'Skyline'],
+  snd:     ['Hacienda', 'Highrise', 'Lowlands', 'Nuketown', 'Rewind', 'Skyline'],
+  control: ['Hacienda', 'Highrise', 'Lowlands']
+};
+
+// CDL Best of 5 Veto Sequence (Team 1 = coin flip winner)
+const VETO_STEPS = [
+  { action:'ban',  mode:'hp',      team:1 },
+  { action:'ban',  mode:'hp',      team:2 },
+  { action:'ban',  mode:'hp',      team:1 },
+  { action:'ban',  mode:'hp',      team:2 },
+  { action:'pick', mode:'hp',      team:2, game:1 }, // T2 picks G1 → leftover = G4
+  { action:'ban',  mode:'snd',     team:2 },
+  { action:'ban',  mode:'snd',     team:1 },
+  { action:'ban',  mode:'snd',     team:2 },
+  { action:'ban',  mode:'snd',     team:1 },
+  { action:'pick', mode:'snd',     team:1, game:2 }, // T1 picks G2 → leftover = G5
+  { action:'ban',  mode:'control', team:1 },
+  { action:'ban',  mode:'control', team:2 },         // leftover = G3
+];
+
+const MODE_LABEL = { hp:'Hardpoint', snd:'Search & Destroy', control:'Control' };
+const MODE_SHORT = { hp:'HP', snd:'SnD', control:'CTL' };
+
+// ─────────────────────── STATE ────────────────────────────────────────────
+function blankState() {
+  return {
+    teams: {
+      team1: { name:'Team 1', color:'#0057B8' },
+      team2: { name:'Team 2', color:'#E8003D' },
+    },
+    mapPool: structuredClone(DEFAULT_POOL),
+    veto: {
+      complete: false,
+      step:     0,
+      bans:     { hp:[], snd:[], control:[] },
+      picks:    { hp:[], snd:[], control:[] },
+      available: structuredClone(DEFAULT_POOL),
+    },
+    series: [
+      { game:1, mode:'hp',      map:null, pickedBy:null, score1:0, score2:0, winner:null },
+      { game:2, mode:'snd',     map:null, pickedBy:null, score1:0, score2:0, winner:null },
+      { game:3, mode:'control', map:null, pickedBy:null, score1:0, score2:0, winner:null },
+      { game:4, mode:'hp',      map:null, pickedBy:null, score1:0, score2:0, winner:null },
+      { game:5, mode:'snd',     map:null, pickedBy:null, score1:0, score2:0, winner:null },
+    ],
+    phase: 'setup',
+  };
+}
+
+let S = (() => {
+  try {
+    const raw = localStorage.getItem('cdl-veto');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return blankState();
+})();
+
+function save() {
+  try { localStorage.setItem('cdl-veto', JSON.stringify(S)); } catch(e) {}
+}
+
+// ─────────────────────── HELPERS ─────────────────────────────────────────
+const tn = n => S.teams[`team${n}`].name;
+const tc = n => S.teams[`team${n}`].color;
+const seriesWins = () => ({
+  t1: S.series.filter(g => g.winner === 1).length,
+  t2: S.series.filter(g => g.winner === 2).length,
+});
+
+function autoAssign() {
+  const v = S.veto;
+  if (v.step >= 5 && v.available.hp.length === 1) {
+    const g = S.series.find(x => x.game === 4);
+    if (g && !g.map) { g.map = v.available.hp[0]; g.pickedBy = 'auto'; }
+  }
+  if (v.step >= 10 && v.available.snd.length === 1) {
+    const g = S.series.find(x => x.game === 5);
+    if (g && !g.map) { g.map = v.available.snd[0]; g.pickedBy = 'auto'; }
+  }
+  if (v.step >= 12 && v.available.control.length === 1) {
+    const g = S.series.find(x => x.game === 3);
+    if (g && !g.map) { g.map = v.available.control[0]; g.pickedBy = 'auto'; }
+    v.complete = true;
+    S.phase = 'series';
+  }
+}
+
+function recalcPhase() {
+  const w = seriesWins();
+  if (w.t1 >= 3 || w.t2 >= 3) S.phase = 'complete';
+}
+
+// ─────────────────────── SETUP ───────────────────────────────────────────
+function startVeto() {
+  const t1 = document.getElementById('setup-t1-name').value.trim() || 'Team 1';
+  const t2 = document.getElementById('setup-t2-name').value.trim() || 'Team 2';
+  const parse = id => document.getElementById(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const hp      = parse('setup-hp');
+  const snd     = parse('setup-snd');
+  const control = parse('setup-control');
+
+  if (hp.length < 2)      { toast('Need at least 2 Hardpoint maps', 'err'); return; }
+  if (snd.length < 2)     { toast('Need at least 2 S&D maps', 'err'); return; }
+  if (control.length < 1) { toast('Need at least 1 Control map', 'err'); return; }
+
+  S.teams.team1 = { name:t1, color: document.getElementById('setup-t1-color').value };
+  S.teams.team2 = { name:t2, color: document.getElementById('setup-t2-color').value };
+  S.mapPool     = { hp, snd, control };
+  S.veto.available = structuredClone({ hp, snd, control });
+  S.phase = 'veto';
+  save();
+  showMain();
+  render();
+  switchTab('veto');
+}
+
+function showMain() {
+  document.getElementById('screen-setup').style.display = 'none';
+  document.getElementById('screen-main').style.display  = 'flex';
+  document.getElementById('nav-setup').classList.add('disabled');
+  document.getElementById('nav-veto').classList.remove('disabled');
+  document.getElementById('nav-series').classList.remove('disabled');
+}
+
+// ─────────────────────── VETO ACTION ─────────────────────────────────────
+function doVeto(map) {
+  const v = S.veto;
+  if (v.complete || v.step >= VETO_STEPS.length) return;
+  const step  = VETO_STEPS[v.step];
+  const avail = v.available[step.mode];
+  if (!avail.includes(map)) return;
+
+  v.available[step.mode] = avail.filter(m => m !== map);
+
+  if (step.action === 'ban') {
+    v.bans[step.mode].push({ map, team: step.team });
+  } else {
+    v.picks[step.mode].push({ map, team: step.team });
+    const g = S.series.find(x => x.game === step.game);
+    if (g) { g.map = map; g.pickedBy = step.team; }
+  }
+
+  v.step++;
+  autoAssign();
+  recalcPhase();
+  save();
+  render();
+}
+
+// ─────────────────────── SCORES ──────────────────────────────────────────
+function setScore(gameNum, field, val) {
+  const g = S.series.find(x => x.game === gameNum);
+  if (g) { g[field] = Math.max(0, parseInt(val) || 0); save(); renderSeries(); }
+}
+
+function setWinner(gameNum, team) {
+  const g = S.series.find(x => x.game === gameNum);
+  if (!g || !g.map) return;
+  g.winner = (g.winner === team) ? null : team;
+  recalcPhase();
+  save();
+  renderHeader();
+  renderSeries();
+  renderWinner();
+}
+
+// ─────────────────────── SETTINGS ────────────────────────────────────────
+function openSettings() {
+  document.getElementById('set-t1-name').value  = S.teams.team1.name;
+  document.getElementById('set-t1-color').value = S.teams.team1.color;
+  document.getElementById('set-t2-name').value  = S.teams.team2.name;
+  document.getElementById('set-t2-color').value = S.teams.team2.color;
+  openModal('modal-settings');
+}
+function saveSettings() {
+  S.teams.team1.name  = document.getElementById('set-t1-name').value.trim()  || 'Team 1';
+  S.teams.team1.color = document.getElementById('set-t1-color').value;
+  S.teams.team2.name  = document.getElementById('set-t2-name').value.trim()  || 'Team 2';
+  S.teams.team2.color = document.getElementById('set-t2-color').value;
+  save(); closeModal('modal-settings'); render(); toast('Saved', 'ok');
+}
+
+function confirmReset() {
+  if (!confirm('Reset everything? This clears all veto and score data.')) return;
+  localStorage.removeItem('cdl-veto');
+  location.reload();
+}
+
+// ─────────────────────── RENDER ──────────────────────────────────────────
+function render() { renderHeader(); renderVeto(); renderSeries(); }
+
+function renderHeader() {
+  const w = seriesWins();
+  document.getElementById('hdr-t1-name').textContent  = tn(1).toUpperCase();
+  document.getElementById('hdr-t2-name').textContent  = tn(2).toUpperCase();
+  document.getElementById('hdr-t1-score').textContent = w.t1;
+  document.getElementById('hdr-t2-score').textContent = w.t2;
+  document.getElementById('hdr-t1-score').style.color = tc(1);
+  document.getElementById('hdr-t2-score').style.color = tc(2);
+  document.getElementById('hdr-bar1').style.background = tc(1);
+  document.getElementById('hdr-bar2').style.background = tc(2);
+  document.documentElement.style.setProperty('--t1-color', tc(1));
+  document.documentElement.style.setProperty('--t2-color', tc(2));
+
+  const chip = document.getElementById('phase-chip');
+  const labels = { setup:'Setup', veto:'Veto', series:'Series', complete:'Complete' };
+  chip.textContent = labels[S.phase] || S.phase;
+  chip.className   = 'phase-chip' +
+    (S.phase==='veto' ? ' veto' : S.phase==='series' ? ' series' : S.phase==='complete' ? ' done' : '');
+}
+
+function renderVeto() {
+  const v    = S.veto;
+  const step = v.step;
+  const total = VETO_STEPS.length;
+  const done  = v.complete || step >= total;
+
+  // Prompt / done card
+  document.getElementById('action-prompt').style.display = done ? 'none' : '';
+  document.getElementById('veto-done-card').style.display = done ? '' : 'none';
+
+  if (!done) {
+    const cur = VETO_STEPS[step];
+    const apTeam = document.getElementById('ap-team');
+    apTeam.textContent = tn(cur.team).toUpperCase();
+    apTeam.style.color = tc(cur.team);
+    document.getElementById('action-prompt').className = `action-prompt action-${cur.action}`;
+    const aw = document.getElementById('ap-word');
+    aw.textContent = cur.action.toUpperCase();
+    aw.className   = `ap-action-word ${cur.action}`;
+    const gl = cur.game ? ` (Game ${cur.game})` : '';
+    document.getElementById('ap-rest').textContent = ` a ${MODE_LABEL[cur.mode]} map${gl}`;
+  }
+
+  // Progress bar
+  const bar = document.getElementById('vp-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'vp-seg' + (i < step ? ' done' : i === step && !done ? ' current' : '');
+    bar.appendChild(seg);
+  }
+  document.getElementById('vp-label').textContent = `${step} / ${total}`;
+
+  // Mode active badges
+  const curMode = (!done && step < total) ? VETO_STEPS[step].mode : null;
+  ['hp','snd','control'].forEach(m => {
+    document.getElementById(`badge-${m}`).style.display = m === curMode ? '' : 'none';
+  });
+
+  ['hp','snd','control'].forEach(m => renderModeGrid(m));
+  renderLog();
+  renderWinner();
+}
+
+function renderModeGrid(mode) {
+  const v       = S.veto;
+  const grid    = document.getElementById(`grid-${mode}`);
+  const all     = S.mapPool[mode] || [];
+  const banned  = (v.bans[mode]  || []).map(b => b.map);
+  const picked  = (v.picks[mode] || []).map(p => p.map);
+  const autoMap = S.series.filter(g => g.mode===mode && g.pickedBy==='auto' && g.map).map(g=>g.map);
+
+  const step    = v.step;
+  const total   = VETO_STEPS.length;
+  const isActive = !v.complete && step < total && VETO_STEPS[step].mode === mode;
+  const curAct  = isActive ? VETO_STEPS[step].action : null;
+
+  grid.innerHTML = '';
+  all.forEach(map => {
+    const tile = document.createElement('div');
+    if (banned.includes(map)) {
+      tile.className = 'map-tile state-banned';
+      const who = v.bans[mode].find(b => b.map === map);
+      tile.innerHTML = `${map}<span class="tile-tag ban">Banned &middot; ${tn(who.team)}</span>`;
+    } else if (picked.includes(map)) {
+      tile.className = 'map-tile state-picked';
+      const who = v.picks[mode].find(p => p.map === map);
+      const g   = S.series.find(s => s.map===map && s.mode===mode);
+      tile.innerHTML = `${map}<span class="tile-tag pick">&#10003; G${g?g.game:'?'} &middot; ${tn(who.team)}</span>`;
+    } else if (autoMap.includes(map)) {
+      tile.className = 'map-tile state-auto';
+      const g = S.series.find(s => s.map===map && s.mode===mode);
+      tile.innerHTML = `${map}<span class="tile-tag auto">&#8594; Game ${g?g.game:'?'}</span>`;
+    } else if (isActive) {
+      tile.className = `map-tile clickable is-${curAct}`;
+      tile.textContent = map;
+      tile.onclick = () => doVeto(map);
+    } else {
+      tile.className = 'map-tile';
+      tile.textContent = map;
+    }
+    grid.appendChild(tile);
+  });
+}
+
+function renderLog() {
+  const log   = document.getElementById('veto-log');
+  const empty = document.getElementById('log-empty');
+  const v     = S.veto;
+  const entries = [];
+
+  ['hp','snd','control'].forEach(mode => {
+    const ms = MODE_SHORT[mode];
+    (v.bans[mode]  || []).forEach(b => entries.push({ type:'ban',  map:b.map, team:b.team, mode:ms }));
+    (v.picks[mode] || []).forEach(p => entries.push({ type:'pick', map:p.map, team:p.team, mode:ms }));
+  });
+  S.series.forEach(g => {
+    if (g.pickedBy === 'auto' && g.map)
+      entries.push({ type:'auto', map:g.map, team:null, mode:MODE_SHORT[g.mode], game:g.game });
+  });
+
+  if (!entries.length) { log.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  log.innerHTML = '';
+  entries.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    const tl = e.team ? `by ${tn(e.team)}` : `&#8594; Game ${e.game}`;
+    div.innerHTML =
+      `<span class="log-badge ${e.type}">${e.type}</span>
+       <span class="log-mode">[${e.mode}]</span>
+       <span class="log-map">${e.map}</span>
+       <span class="log-team">${tl}</span>`;
+    log.appendChild(div);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderWinner() {
+  const banner = document.getElementById('winner-banner');
+  if (S.phase === 'complete') {
+    const w = seriesWins();
+    const winner = w.t1 >= 3 ? 1 : 2;
+    document.getElementById('winner-name').textContent = tn(winner).toUpperCase();
+    document.getElementById('winner-name').style.color = tc(winner);
+    document.getElementById('winner-score').textContent =
+      `${tn(1)}  ${w.t1} – ${w.t2}  ${tn(2)}`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderSeries() {
+  const container = document.getElementById('series-cards');
+  container.innerHTML = '';
+  S.series.forEach(game => {
+    const card = document.createElement('div');
+    card.className = 'game-card' +
+      (game.winner===1 ? ' won-1' : game.winner===2 ? ' won-2' : '');
+
+    const mapHTML = game.map
+      ? `<span class="game-map-name">${game.map}</span>`
+      : `<span class="game-map-name tbd">TBD</span>`;
+
+    const pickedLabel = game.pickedBy === 'auto'
+      ? `<span style="font-size:10px;color:var(--muted);margin-left:4px;">Auto-assigned</span>`
+      : game.pickedBy
+        ? `<span style="font-size:10px;color:var(--muted);margin-left:4px;">Picked by ${tn(game.pickedBy)}</span>`
+        : '';
+
+    const dis = !game.map ? 'disabled' : '';
+    const w1a = game.winner===1 ? 'active' : '';
+    const w2a = game.winner===2 ? 'active' : '';
+    const w1s = game.winner===1 ? `style="background:${tc(1)};border-color:${tc(1)};color:#fff;"` : '';
+    const w2s = game.winner===2 ? `style="background:${tc(2)};border-color:${tc(2)};color:#fff;"` : '';
+
+    card.innerHTML = `
+      <div class="game-card-header">
+        <span class="game-num">Game ${game.game}</span>
+        ${mapHTML}${pickedLabel}
+        <span class="game-mode-badge ${game.mode}">${MODE_SHORT[game.mode]}</span>
+      </div>
+      <div class="game-score-row">
+        <span class="score-team-label" style="color:${tc(1)}">${tn(1)}</span>
+        <input class="score-field" type="number" min="0" value="${game.score1}" ${dis}
+          style="border-color:${tc(1)}"
+          onchange="setScore(${game.game},'score1',this.value)">
+        <span class="score-sep">–</span>
+        <input class="score-field" type="number" min="0" value="${game.score2}" ${dis}
+          style="border-color:${tc(2)}"
+          onchange="setScore(${game.game},'score2',this.value)">
+        <span class="score-team-label" style="color:${tc(2)};text-align:right">${tn(2)}</span>
+      </div>
+      <div class="flex gap-8 mt-8">
+        <button class="win-btn ${w1a}" ${dis} ${w1s}
+          onclick="setWinner(${game.game},1)">&#10003; ${tn(1)} Win</button>
+        <button class="win-btn ${w2a}" ${dis} ${w2s}
+          onclick="setWinner(${game.game},2)">&#10003; ${tn(2)} Win</button>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+// ─────────────────────── TAB SWITCHING ───────────────────────────────────
+function switchTab(tab) {
+  ['setup','veto','series'].forEach(t => {
+    document.getElementById(`nav-${t}`).classList.toggle('active', t===tab);
+  });
+  const vp = document.getElementById('panel-veto');
+  const sp = document.getElementById('panel-series');
+  if (tab === 'veto') {
+    vp.style.display = ''; vp.style.flex = '';
+    sp.style.display = ''; sp.style.width = '';
+  } else if (tab === 'series') {
+    vp.style.display = 'none';
+    sp.style.display = ''; sp.style.width = '100%';
+  }
+}
+
+// ─────────────────────── MODAL ───────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target===el) el.classList.remove('open'); });
+});
+
+// ─────────────────────── TOAST ───────────────────────────────────────────
+let toastT;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─────────────────────── INIT ────────────────────────────────────────────
+(function init() {
+  document.getElementById('setup-hp').value      = DEFAULT_POOL.hp.join('\n');
+  document.getElementById('setup-snd').value     = DEFAULT_POOL.snd.join('\n');
+  document.getElementById('setup-control').value = DEFAULT_POOL.control.join('\n');
+
+  if (S.phase !== 'setup') {
+    showMain();
+    render();
+    switchTab(S.phase === 'veto' ? 'veto' : 'series');
+  }
+})();
+</script>
+</body>
+</html>
